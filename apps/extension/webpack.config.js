@@ -9,19 +9,19 @@ const BundleAnalyzerPlugin =
 const fs = require("fs");
 
 const isBuildManifestV2 = process.env.BUILD_MANIFEST_V2 === "true";
-
 const isEnvDevelopment = process.env.NODE_ENV !== "production";
 const isDisableSplitChunks = process.env.DISABLE_SPLIT_CHUNKS === "true";
 const isEnvAnalyzer = process.env.ANALYZER === "true";
+
 const commonResolve = (dir) => ({
   extensions: [".ts", ".tsx", ".js", ".jsx"],
   alias: {
     assets: path.resolve(__dirname, dir),
   },
 });
+
 const altResolve = () => {
   const p = path.resolve(__dirname, "./src/keplr-wallet-private/index.ts");
-
   if (fs.existsSync(p)) {
     return {
       alias: {
@@ -32,10 +32,11 @@ const altResolve = () => {
       },
     };
   }
-
   return {};
 };
+
 const tsRule = { test: /\.tsx?$/, loader: "ts-loader" };
+
 const fileRule = {
   test: /\.(svg|png|webm|mp4|jpe?g|gif|woff|woff2|eot|ttf)$/i,
   type: "asset/resource",
@@ -64,6 +65,8 @@ module.exports = {
     background: ["./src/background/background.ts"],
     contentScripts: ["./src/content-scripts/content-scripts.ts"],
     injectedScript: ["./src/content-scripts/inject/injected-script.ts"],
+    // ДОБАВЛЕН НОВЫЙ ENTRY POINT ДЛЯ FEE GRANT
+    "fee-grant-inject": ["./src/content-scripts/fee-grant-inject.ts"],
   },
   output: {
     path: path.resolve(
@@ -78,13 +81,10 @@ module.exports = {
         if (isDisableSplitChunks) {
           return false;
         }
-
-        const servicePackages = ["contentScripts", "injectedScript"];
-
+        const servicePackages = ["contentScripts", "injectedScript", "fee-grant-inject"]; // ДОБАВЛЕН fee-grant-inject
         if (!isBuildManifestV2) {
           servicePackages.push("background");
         }
-
         return !servicePackages.includes(chunk.name);
       },
       cacheGroups: {
@@ -111,7 +111,6 @@ module.exports = {
               maxAsyncRequests: 100,
             },
           };
-
           if (isBuildManifestV2) {
             res.background = {
               maxSize: 3_000_000,
@@ -119,7 +118,6 @@ module.exports = {
               maxAsyncRequests: 100,
             };
           }
-
           return res;
         })(),
       },
@@ -198,6 +196,8 @@ module.exports = {
       KEPLR_EXT_PROVIDER_META_ID: "",
       KEPLR_EXT_MOONPAY_SIGN_API_BASE_URL: "",
       KEPLR_API_ENDPOINT: "",
+      // ДОБАВЛЕНА ПЕРЕМЕННАЯ ДЛЯ FEE GRANT ДОНОРА
+      KEPLR_FEE_GRANT_DONOR: "cosmos1mlkgumqmnge8uq2eqff7h7lwsym5hjz7n60z4v",
     }),
     new ForkTsCheckerWebpackPlugin(),
     new CopyWebpackPlugin({
@@ -206,15 +206,14 @@ module.exports = {
           if (isBuildManifestV2) {
             return [
               {
-                from: "./src/manifest.v2.json",
+                from: "./src/manifest/manifest.v2.json", // ИСПРАВЛЕН ПУТЬ
                 to: "./manifest.json",
               },
             ];
           }
-
           return [
             {
-              from: "./src/manifest.v3.json",
+              from: "./src/manifest/manifest.v3.json", // ИСПРАВЛЕН ПУТЬ
               to: "./manifest.json",
             },
           ];
@@ -268,7 +267,6 @@ module.exports = {
           }),
         ];
       }
-
       return [];
     })(),
     new BundleAnalyzerPlugin({
